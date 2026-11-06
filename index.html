@@ -9,13 +9,10 @@
 html,body{margin:0;padding:0;background:#f3ede2;color:#2e2a24;font-family:sans-serif;font-size:16px;-webkit-text-size-adjust:none;}
 #top{background:#fbf8f2;padding:8px 10px 6px;border-bottom:1px solid #ddd2bf;}
 #q{width:100%;font-size:19px;padding:8px 10px;border:2px solid #9a6a3a;border-radius:6px;background:#fff;color:#2e2a24;-webkit-appearance:none;}
-.flt{overflow:hidden;margin-top:6px;}
-.flt select{float:left;width:32%;margin-right:2%;font-size:14px;height:32px;padding:0 4px;border:1px solid #cfc3ad;border-radius:5px;background:#fff;color:#2e2a24;}
-.flt select.last{margin-right:0;}
-.row2{overflow:hidden;margin-top:6px;}
-.chk{float:left;font-size:13px;color:#5d5547;padding:6px 10px;border:1px solid #cfc3ad;border-radius:5px;background:#fff;margin-right:6px;}
-.chk.on{background:#9a6a3a;border-color:#9a6a3a;color:#fff;}
-.reset{float:right;font-size:13px;color:#9a6a3a;padding:6px 10px;border:1px solid #cfc3ad;border-radius:5px;background:#fbf8f2;}
+#chips{overflow:hidden;}
+.chip{float:left;margin:6px 6px 0 0;padding:4px 4px 4px 10px;border-radius:14px;background:#9a6a3a;color:#fff;font-size:14px;line-height:20px;}
+.chip .x{display:inline-block;width:22px;height:20px;margin-left:4px;text-align:center;border-radius:10px;background:#7d5428;color:#fff;font-weight:bold;}
+.hint{font-size:12px;color:#7a7264;margin-top:5px;}
 #cnt{font-size:12px;color:#7a7264;margin-top:6px;}
 #list .it{padding:9px 12px;border-bottom:1px solid #e4dacb;background:#fbf8f2;}
 #list .it:active{background:#efe5d4;}
@@ -51,16 +48,8 @@ table.rk td.lb{background:transparent;border-color:transparent;color:#7a7264;fon
 <body>
 <div id="top">
   <input id="q" type="text" placeholder="품번 / 자재명 / 규격 / 위치" autocomplete="off" autocorrect="off" autocapitalize="off">
-  <div class="flt">
-    <select id="fRack"><option value="">랙 전체</option></select>
-    <select id="fCat"><option value="">구분 전체</option></select>
-    <select id="fCar" class="last"><option value="">차종 전체</option></select>
-  </div>
-  <div class="row2">
-    <select id="fMaker" style="float:left;width:40%;font-size:14px;height:32px;padding:0 4px;border:1px solid #cfc3ad;border-radius:5px;background:#fff;color:#2e2a24;margin-right:6px;"><option value="">Maker 전체</option></select>
-    <span class="chk" id="fOver">초과보관만</span>
-    <span class="reset" id="fReset">초기화</span>
-  </div>
+  <div id="chips"></div>
+  <div class="hint">입력 후 엔터 → 필터 추가 · × 누르면 삭제</div>
   <div id="cnt"></div>
 </div>
 <div id="list"></div>
@@ -72,8 +61,8 @@ var D = {"a":[["6E0250C0","C/CONDENSER(AUTO)","104/K/50V/1608","GCM188R71H104KA5
   for(i=0;i<D.r.length;i++){ R[D.r[i][0]]=D.r[i]; }
   function $(id){ return document.getElementById(id); }
   var q=$('q'), list=$('list'), det=$('det'), cnt=$('cnt');
-  var fRack=$('fRack'), fCat=$('fCat'), fCar=$('fCar'), fMaker=$('fMaker'), fOver=$('fOver'), fReset=$('fReset');
-  var MAX=60, timer=null, lastY=0, overOnly=false;
+  var chipsEl=$('chips'), chips=[];
+  var MAX=60, timer=null, lastY=0;
   function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function num(n){ if(n==null||n==='') return '-'; return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
   function trim(s){ return (s||'').replace(/^\s+|\s+$/g,''); }
@@ -97,32 +86,15 @@ var D = {"a":[["6E0250C0","C/CONDENSER(AUTO)","104/K/50V/1608","GCM188R71H104KA5
     H.push((a[0]+' '+a[1]+' '+a[2]+' '+a[3]+' '+a[4]+' '+a[5]+' '+a[6]+' '+a[7]+' '+a[8]+' '+a[9]+' '+a[11]).toLowerCase());
     RK.push(rackOf(a)); CT.push(catOf(a));
   }
-  function uniq(arr){ var o={}, r=[], k; for(k=0;k<arr.length;k++){ var v=trim(arr[k]); if(v && !o[v]){ o[v]=1; r.push(v); } } return r; }
-  function rackKey(s){ var m=/^([A-Z])-(\d+)$/.exec(s); return m?(m[1].charCodeAt(0)*1000+(+m[2])):99999; }
-  function fill(sel, vals){ var k; for(k=0;k<vals.length;k++){ var o=document.createElement('option'); o.value=vals[k]; o.text=vals[k]; sel.appendChild(o); } }
-  var racks=uniq(RK); racks.sort(function(x,y){ return rackKey(x)-rackKey(y); }); fill(fRack,racks);
-  var cats=['콘덴서','저항','다이오드','트랜지스터·FET','IC','인덕터·필터','LED','PCB','기타'], used={}, cl=[];
-  for(i=0;i<CT.length;i++) used[CT[i]]=1;
-  for(i=0;i<cats.length;i++) if(used[cats[i]]) cl.push(cats[i]);
-  fill(fCat,cl);
-  var cars=[], makers=[]; for(i=0;i<A.length;i++){ cars.push(A[i][5]); makers.push(A[i][4]); }
-  cars=uniq(cars); cars.sort(); fill(fCar,cars);
-  makers=uniq(makers); makers.sort(function(x,y){ x=x.toUpperCase(); y=y.toUpperCase(); return x<y?-1:(x>y?1:0); }); fill(fMaker,makers);
 
   function search(){
-    var v=trim(q.value).toLowerCase(), terms=v?v.split(/\s+/):[], out=[], j, k, ok, a;
-    var vr=fRack.value, vc=fCat.value, va=fCar.value, vm=fMaker.value;
+    var v=trim(q.value).toLowerCase(), terms=chips.concat(v?v.split(/\s+/):[]), out=[], j, k, ok, a;
     for(j=0;j<A.length;j++){
       a=A[j];
-      if(vr && RK[j]!==vr) continue;
-      if(vc && CT[j]!==vc) continue;
-      if(va && trim(a[5])!==va) continue;
-      if(vm && trim(a[4])!==vm) continue;
-      if(overOnly && !a[10]) continue;
       ok=true; for(k=0;k<terms.length;k++){ if(H[j].indexOf(terms[k])<0){ ok=false; break; } }
       if(ok) out.push(j);
     }
-    var filtered = v||vr||vc||va||vm||overOnly;
+    var filtered = terms.length>0;
     cnt.innerHTML=(filtered?out.length+'건':'전체 '+A.length+'건')+(out.length>MAX?' · 상위 '+MAX+'건 표시':'');
     var h=[];
     for(j=0;j<out.length&&j<MAX;j++){
@@ -179,13 +151,27 @@ var D = {"a":[["6E0250C0","C/CONDENSER(AUTO)","104/K/50V/1608","GCM188R71H104KA5
     while(t && t!==list && !(t.getAttribute && t.getAttribute('data-i'))) t=t.parentNode;
     if(t && t!==list) show(+t.getAttribute('data-i'));
   };
+  function drawChips(){
+    var h=[], k;
+    for(k=0;k<chips.length;k++) h.push('<span class="chip">'+esc(chips[k])+'<span class="x" data-c="'+k+'">&#215;</span></span>');
+    chipsEl.innerHTML=h.join('');
+  }
+  function addChips(){
+    var v=trim(q.value).toLowerCase(), t, k, m;
+    if(!v) return;
+    t=v.split(/\s+/);
+    for(k=0;k<t.length;k++){ var dup=false; for(m=0;m<chips.length;m++){ if(chips[m]===t[k]) dup=true; } if(!dup) chips.push(t[k]); }
+    q.value=''; drawChips(); search();
+  }
+  chipsEl.onclick=function(e){
+    e=e||window.event; var t=e.target||e.srcElement;
+    if(t && t.getAttribute && t.getAttribute('data-c')!==null){ chips.splice(+t.getAttribute('data-c'),1); drawChips(); search(); }
+  };
+  q.onkeydown=function(e){ e=e||window.event; if(e.keyCode===13){ if(e.preventDefault) e.preventDefault(); addChips(); return false; } };
   q.oninput=q.onkeyup=function(e){
-    if(e && e.keyCode===13){ var f=list.querySelector('.it'); if(f){ q.blur(); show(+f.getAttribute('data-i')); } return; }
+    if(e && e.keyCode===13) return;
     clearTimeout(timer); timer=setTimeout(search,150);
   };
-  fRack.onchange=fCat.onchange=fCar.onchange=fMaker.onchange=search;
-  fOver.onclick=function(){ overOnly=!overOnly; fOver.className=overOnly?'chk on':'chk'; search(); };
-  fReset.onclick=function(){ q.value=''; fRack.value=''; fCat.value=''; fCar.value=''; fMaker.value=''; overOnly=false; fOver.className='chk'; search(); };
   search();
 })();
 </script>
